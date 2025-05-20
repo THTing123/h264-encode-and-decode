@@ -150,3 +150,50 @@ This distribution contains software from the X Window System.  This is:
  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
  ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  SOFTWARE.
+
+1. windows 编译环境
+1）构建TigerVNC项目需要安装MSYS2。 可参考https://blog.csdn.net/yang1fei2/article/details/132068936
+需要安装的依赖库：pkg-config、cmake、fltk、gnutls、gcc、make、pixman、ffmpeg
+注意安装的时候需要先用命令查询依赖包是 mingw32还是mingw64的
+pacman -Sl | grep 包名   //查询包
+2）编译命令
+cd tigerVNC
+mkdir build
+cd build
+cmake -G "MinGW Makefiles" ../
+mingw32-make.exe
+3）运行exe
+编译的客户端的exe路径：build\vncviewer\vncviewer.exe
+服务器的exe路径：build\win\winvnc\winvnc4.exe
+客户端连接的时候要填服务端的ip和端口号（5900开始）
+编译成功后，如果运行exe的机器和编译VNC项目的机器不是同一台。直接执行exe会报错：缺少dll。需要把 C:\msys64\mingw64\bin 文件夹拷贝到要运行exe的机器，并将 该bin文件夹所在路径加到环境变量中。
+
+2. ffmpeg相关
+ffplay.exe将yuv格式的数据转为H264格式：
+ffmpeg.exe -y -pixel_format yuv420p -s 1280x52 -i out_yuv_111.yuv -vcodec libx264 -x264-params "preset=ultrafast:tune=zerolatency:keyint=1" out111.h264
+ffplay.exe播放h264文件：
+ffpaly.exe out111.h264
+ffplay -pixel_format rgb24 -video_size 320x240 -i rgb24_320x240.rgb
+保存yuv文件的时候考虑linesize和width不一致时：
+      int h=frame->height,w=frame->width;
+      for (int i = 0; i < h; i++) {
+          fwrite(frame->data[0] + i*frame->linesize[0], 1, w, yuv_file);
+      }
+      for (int i = 0; i < h/2; i++) {
+          fwrite(frame->data[1] + i * frame->linesize[1], 1, w / 2, yuv_file);
+      }
+      for (int i = 0; i < h / 2; i++) {
+          fwrite(frame->data[2] + i * frame->linesize[2], 1, w / 2, yuv_file);
+      }
+
+宽和stride一致时，
+
+     fwrite(frame->data[0], 1, frame->width * frame->height, yuv_file);
+     fwrite(frame->data[1], 1, frame->width * frame->height/4, yuv_file);
+     fwrite(frame->data[2], 1, frame->width * frame->height/4, yuv_file);
+
+3. 配置vnc注册为服务
+在路径 build\win\winvnc\下打开powershell 执行 .\winvnc4.exe -register 注册为服务 ， 具体的参数可在代码winvnc.cxx里查看
+注意：注册成服务后，在服务里打开Tiger VNC时若遇到如下问题（Windows无法启动 TigerVNC Server 服务 位于本地计算机上。错误1053：服务没有及时响应启动或控制请求），需要将tiger VNC用到的库vame的路径加入系统变量（C:\Program Files\VastStream SDK\bin）
+
+
